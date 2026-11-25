@@ -19,6 +19,7 @@
       <button data-nav="home" class="active">首页</button>
       <button data-nav="explore">知识图谱</button>
       <button data-nav="diagnose">开始诊断</button>
+      <button data-nav="paper">组卷</button>
       <button data-nav="wrong">错题本 <span id="wrongBadge" class="badge">0</span></button>
     </nav>
     <div id="subjectSwitch" class="subject-switch"></div>
@@ -215,6 +216,66 @@
         </div>
       </div>
       <div id="reportBody"></div>
+    </div>
+  </section>
+
+  <!-- ===== 双向细目表组卷 ===== -->
+  <section id="view-paper" class="view">
+    <div class="wrap">
+      <div class="page-head">
+        <div><h2>双向细目表组卷</h2><p>按知识点 × 难度排题量，生成可打印练习卷。题目来自本机题库，正式使用请教师审核</p></div>
+        <div class="page-tools">
+          <button id="btnPaperPrint" class="btn ghost">打印预览</button>
+          <button id="btnPaperExport" class="btn primary">导出练习卷</button>
+        </div>
+      </div>
+
+      <div id="paperSetup" class="card setup">
+        <div class="form-row">
+          <label>年级</label>
+          <div id="paperGrades" class="chip-row"></div>
+        </div>
+        <div class="form-row">
+          <label>知识点范围</label>
+          <input id="paperSearch" class="input" type="search" placeholder="关键词筛选，如：分数、面积、古诗…（留空取该年级全部有题知识点）">
+          <div id="paperTopics" class="target-results"></div>
+          <div class="hint">点击挑选，不选则按该年级全部有题知识点平均分配。已选：<span id="paperSelected">全部</span></div>
+        </div>
+        <div class="form-row">
+          <label>试卷参数</label>
+          <div class="opts-row">
+            <div class="opt"><span>总题量</span>
+              <select id="paperTotal" class="select">
+                <option value="10">10 题</option>
+                <option value="20" selected>20 题</option>
+                <option value="30">30 题</option>
+                <option value="40">40 题</option>
+              </select>
+            </div>
+            <div class="opt"><span>难度配比（易:中:难）</span>
+              <select id="paperRatio" class="select">
+                <option value="3:5:2" selected>3:5:2（推荐）</option>
+                <option value="5:3:2">5:3:2（偏基础）</option>
+                <option value="2:5:3">2:5:3（偏提高）</option>
+                <option value="7:2:1">7:2:1（基础巩固）</option>
+              </select>
+            </div>
+            <div class="opt"><span>题型</span>
+              <select id="paperTypes" class="select">
+                <option value="auto" selected>按题库实际</option>
+                <option value="choice">只出选择题</option>
+                <option value="numeric">只出填空题</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="setup-actions">
+          <button id="btnBuildPaper" class="btn primary">生成双向细目表并组卷 <span>→</span></button>
+          <span id="paperError" class="err"></span>
+        </div>
+      </div>
+
+      <div id="paperResult" class="hidden"></div>
     </div>
   </section>
 

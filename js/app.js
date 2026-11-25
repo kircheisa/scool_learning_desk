@@ -18,6 +18,24 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
+  // 题目配图：仅允许单张内联 <svg>，剔除 script / on* 事件 / javascript: / 外部引用，防 XSS。
+  // 题库图形来自原项目内联 SVG，用 currentColor 描边，深色主题下自动取浅色文字色。
+  function safeFigureMarkup(raw) {
+    if (!raw || typeof raw !== 'string') return '';
+    var s = raw.trim();
+    if (!/^<svg\b/i.test(s) || !/<\/svg>$/i.test(s)) return '';
+    // 只取到第一个 </svg> 为止，杜绝后面夹带的内容
+    s = s.slice(0, s.toLowerCase().indexOf('</svg>') + 6);
+    s = s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+    s = s.replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject>/gi, '');
+    s = s.replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    s = s.replace(/(href|xlink:href|src)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, function (m) {
+      return /javascript:|data:text\/html/i.test(m) ? '' : m;
+    });
+    if (!/^<svg\b/i.test(s) || !/<\/svg>$/i.test(s)) return '';
+    return s;
+  }
+
   var STORE = {
     get: function (k, d) { try { var v = localStorage.getItem('zhipu_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set: function (k, v) { try { localStorage.setItem('zhipu_' + k, JSON.stringify(v)); } catch (e) {} },
@@ -371,6 +389,12 @@
     $('#quizCount').textContent = '第 ' + (sum.asked + 1) + ' / ' + sum.limit + ' 题';
     $('#quizTopic').textContent = t ? t.name : S.item.topicId;
     $('#quizQuestion').textContent = q.prompt;
+    var figBox = $('#quizFigure');
+    if (figBox) {
+      var markup = safeFigureMarkup(q.figure);
+      figBox.innerHTML = markup;
+      figBox.classList.toggle('hidden', !markup);
+    }
     var ch = $('#quizChoices'), iw = $('#quizInputWrap'), sw = $('#quizSelfWrap');
     ch.innerHTML = ''; iw.classList.add('hidden'); sw.classList.add('hidden');
     $('#quizInput').value = '';
@@ -423,7 +447,7 @@
         topicId: S.item.topicId, topicName: wt.name || S.item.topicId,
         qid: qid, qtype: q.type || '', cause: '', archived: false,
         options: q.type === 'choice' && q.choices ? q.choices : null,
-        prompt: q.prompt, answer: q.answer, user: user,
+        prompt: q.prompt, figure: q.figure || '', answer: q.answer, user: user,
         explanation: q.explanation || '', time: Date.now() });
       S.wrong = S.wrong.slice(0, 300); STORE.set('wrong', S.wrong); renderWrongBadge();
     }
@@ -685,7 +709,8 @@
         (gl ? '<span class="wtag wtag-grade">' + esc(gl) + '</span>' : '') +
         (CAUSES[w.cause] ? '<span class="wtag wtag-cause">' + CAUSES[w.cause].label + '</span>' : '') +
         (archived ? '<span class="wtag wtag-done">已归档</span>' : '') + '</div>' +
-        '<div class="wi-q">' + esc(w.prompt) + '</div>';
+        '<div class="wi-q">' + esc(w.prompt) + '</div>' +
+        (safeFigureMarkup(w.figure) ? '<div class="wi-figure">' + safeFigureMarkup(w.figure) + '</div>' : '');
       if (!archived) {
         html += '<div class="wi-cause"><span>我归类为</span>';
         Object.keys(CAUSES).forEach(function (c) {
@@ -874,6 +899,7 @@
     renderWrong: renderWrong, enrichWrongGrades: enrichWrongGrades,
     renderDiagSetup: renderDiagSetup, renderTargetResults: renderTargetResults,
     wrongAction: wrongAction, wrongKey: wrongKey,
+    safeFigureMarkup: safeFigureMarkup, nextQuiz: nextQuiz,
     exportMermaidText: function () {
       var ex = exportScopeTopics(), topics = ex.topics, scope = ex.scope, g = ex.graph;
       var m = SUBS[S.subject], lines = ['flowchart TD'];

@@ -191,6 +191,10 @@ button{cursor:pointer;color:var(--text);font:inherit}
 .quiz-bar{height:100%;width:0;background:linear-gradient(90deg,#5b8cff,#8f6bff);transition:width .3s}
 .quiz-meta{display:flex;justify-content:space-between;margin-top:9px;font-size:12px;color:var(--muted)}
 .quiz-question{font-size:20px;line-height:1.6;margin-bottom:22px;font-weight:500}
+/* 题目配图：内联 SVG 用 currentColor 描边，这里设浅色使其在深色底上清晰 */
+.quiz-figure{margin:-8px 0 20px;padding:14px 18px;background:#f4f7fb;border:1px solid var(--line);
+  border-radius:12px;display:flex;justify-content:center;align-items:center;color:#1b2432;min-height:90px}
+.quiz-figure svg{max-width:100%;width:100%;height:auto;max-height:300px;display:block}
 .quiz-choices{display:grid;gap:10px}
 .quiz-choice{display:flex;align-items:center;gap:13px;padding:13px 16px;border:1px solid var(--line);
   border-radius:10px;cursor:pointer;background:var(--panel2);font-size:14.5px;transition:.14s;color:var(--text)}
@@ -249,6 +253,9 @@ button{cursor:pointer;color:var(--text);font:inherit}
 .wrong-group .wg-meta{font-size:12px;color:var(--muted);margin-bottom:12px}
 .wrong-item{padding:11px 0;border-top:1px solid var(--line);font-size:13px}
 .wrong-item .wi-q{margin-bottom:5px}
+.wrong-item .wi-figure{margin:6px 0 10px;padding:10px 14px;background:#f4f7fb;border:1px solid var(--line);
+  border-radius:10px;display:flex;justify-content:center;color:#1b2432;max-height:230px;overflow:auto}
+.wrong-item .wi-figure svg{max-width:100%;width:100%;height:auto;display:block}
 .wrong-item .wi-ans{font-size:12px;color:var(--muted)}
 .wrong-item .wi-ans>div+div{margin-top:3px}
 .wrong-item .wi-exp{margin-top:6px;padding:6px 10px;border-left:2px solid var(--accent);

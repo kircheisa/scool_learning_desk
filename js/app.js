@@ -55,6 +55,7 @@
       limit: 16, confirm: 3, diagMode: 'target' },
     session: null, item: null, choice: null,
     paper: { grade: '', query: '', picked: [], total: 20, ratio: '3:5:2', types: 'auto', result: null },
+    paperExam: null,          // 在线答卷：{ answers:{}, graded:false, results:[] }
     wrong: STORE.get('wrong', []),
     wrongFilter: { subject: '', grade: '', cause: '' },
     wrongScope: 'all',        // 归因看板时间维度：all 全部 / week 本周
@@ -1003,7 +1004,8 @@
         (res.substituted ? res.substituted + ' 题改用同知识点其它难度；' : '') +
         (res.missing ? res.missing + ' 格未补齐。' : '') + '组卷口径：难度 3 档、教师审核后使用。</div>';
     }
-    html += '</div><div class="card"><div class="ws-head">试卷预览 <span>共 ' + res.picked.length + ' 题，答案在导出文件末页</span></div>';
+    html += '</div><div class="card"><div class="ws-head">试卷预览 <span>共 ' + res.picked.length + ' 题，可直接在线作答或导出打印</span>' +
+      '<button class="btn primary small ws-exam-btn" data-wexam="start">在线答卷 →</button></div>';
     res.picked.forEach(function (x, i) {
       var q = x.q;
       html += '<div class="bp-q"><div class="bp-qt">' + (i + 1) + '. ' + esc(q.prompt) + '</div>';
@@ -1022,9 +1024,119 @@
       var res = buildBlueprint({ total: Number($('#paperTotal').value), ratio: $('#paperRatio').value, types: $('#paperTypes').value });
       if (res.error) { $('#paperError').textContent = res.error; S.paper.result = null; renderPaperResult(); return; }
       $('#paperError').textContent = '';
-      p.result = res; renderPaperResult();
+      p.result = res; S.paperExam = null; renderPaperResult();
+      $('#paperExam').classList.add('hidden');
       toast('已生成 ' + res.picked.length + ' 题的双向细目表');
     });
+  }
+  /* ---------- 在线答卷 ---------- */
+  function startPaperExam() {
+    var res = S.paper.result;
+    if (!res || res.error) { toast('请先生成试卷'); return; }
+    S.paperExam = { answers: {}, graded: false, results: [] };
+    $('#paperResult').classList.add('hidden');
+    $('#paperSetup').classList.add('hidden');
+    $('#paperExam').classList.remove('hidden');
+    $('#examScore').classList.add('hidden');
+    $('#btnPaperGrade').classList.remove('hidden');
+    $('#btnPaperRetake').classList.add('hidden');
+    $('#examMeta').textContent = SUBS[S.subject].name + ' · ' + (S.paper.grade || '不限年级') + ' · 共 ' + res.picked.length + ' 题（选择点选，填空输入）';
+    renderPaperExam();
+    window.scrollTo(0, 0);
+  }
+  function renderPaperExam() {
+    var res = S.paper.result, ex = S.paperExam;
+    if (!ex) return;
+    var box = $('#paperExamList'), html = '';
+    res.picked.forEach(function (x, i) {
+      var q = x.q, r = ex.results[i], ans = ex.answers[i];
+      var cls = 'exam-q' + (r ? (r.verdict === 'correct' ? ' ok' : ' bad') : '');
+      html += '<div class="' + cls + '" data-qi="' + i + '">';
+      html += '<div class="eq-head"><span class="eq-n">' + (i + 1) + '.</span>' +
+        '<span class="eq-prompt">' + esc(q.prompt) + '</span>' +
+        '<span class="eq-meta">' + esc(x.topicName) + ' · ' + esc(x.wantDiff) + '</span></div>';
+      if (q.figure && /^<svg/i.test(String(q.figure).trim())) html += '<div class="eq-figure">' + safeFigureMarkup(q.figure) + '</div>';
+      if (q.type === 'choice' && q.choices) {
+        html += '<div class="eq-choices">';
+        q.choices.forEach(function (c) {
+          var chosen = String(ans) === String(c.key);
+          var state = '';
+          if (r) {
+            if (String(q.answer) === String(c.key)) state = ' right';
+            else if (chosen) state = ' wrongpick';
+          } else if (chosen) state = ' chosen';
+          html += '<button class="eq-choice' + state + '" data-exqi="' + i + '" data-key="' + esc(c.key) + '"' + (r ? ' disabled' : '') + '>' +
+            '<span class="eq-key">' + esc(c.key) + '</span><span>' + esc(c.text) + '</span></button>';
+        });
+        html += '</div>';
+      } else {
+        html += '<div class="eq-input"><input class="input" type="text" data-exqi="' + i + '" value="' + esc(ans || '') + '"' +
+          (r ? ' disabled' : '') + ' placeholder="输入答案"></div>';
+      }
+      if (r) {
+        var ansText = (q.type === 'choice' && q.choices) ? (wrongOptionText({ options: q.choices }, q.answer) || q.answer) : q.answer;
+        html += '<div class="eq-fb"><b>' + (r.verdict === 'correct' ? '✓ 答对' : (r.verdict === 'manual' ? '○ 需人工判定' : '✗ 答错')) + '</b>' +
+          '　正确答案：' + esc(ansText) +
+          (q.explanation ? '<div class="eq-exp">解析：' + esc(q.explanation) + '</div>' : '') + '</div>';
+      }
+      html += '</div>';
+    });
+    box.innerHTML = html;
+  }
+  function bindPaperExamEvents() {
+    $('#paperExamList').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-exqi]');
+      if (!b || !b.dataset.key || !S.paperExam || S.paperExam.graded) return;
+      var i = Number(b.dataset.exqi);
+      S.paperExam.answers[i] = b.dataset.key;
+      $$('.eq-choice', b.parentNode).forEach(function (x) { x.classList.remove('chosen'); });
+      b.classList.add('chosen');
+    });
+    $('#paperExamList').addEventListener('input', function (e) {
+      var inp = e.target.closest('input[data-exqi]');
+      if (!inp || !S.paperExam || S.paperExam.graded) return;
+      S.paperExam.answers[inp.dataset.exqi] = inp.value;
+    });
+  }
+  function gradePaperExam() {
+    var res = S.paper.result, ex = S.paperExam;
+    if (!res || !ex) return;
+    var unanswered = 0;
+    res.picked.forEach(function (x, i) { if (ex.answers[i] == null || String(ex.answers[i]).trim() === '') unanswered++; });
+    if (unanswered && !confirm('还有 ' + unanswered + ' 题没作答，确定交卷吗？')) return;
+    var results = [], wrongAdded = 0;
+    res.picked.forEach(function (x, i) {
+      var q = x.q, user = ex.answers[i];
+      var verdict = 'wrong';
+      if (user != null && String(user).trim() !== '') {
+        var j = E.judgeQuestion(q, String(user));
+        verdict = (j.verdict === 'correct' || j.verdict === 'manual') ? j.verdict : 'wrong';
+      }
+      results.push({ verdict: verdict, user: user });
+      if (verdict !== 'correct') {
+        var t = S.graph.byId[x.topicId] || {};
+        S.wrong.unshift({ subject: S.subject, subjectName: (SUBS[S.subject] || {}).name || S.subject,
+          grade: t.grade || '', semester: t.semester || '',
+          topicId: x.topicId, topicName: x.topicName, qid: q.id, qtype: q.type || '', cause: '', archived: false,
+          options: q.type === 'choice' && q.choices ? q.choices : null,
+          prompt: q.prompt, figure: q.figure || '', answer: q.answer, user: user == null ? '' : String(user),
+          explanation: q.explanation || '', time: Date.now() });
+        wrongAdded++;
+      }
+    });
+    S.wrong = S.wrong.slice(0, 300); wrongSave(); renderWrongBadge();
+    ex.results = results; ex.graded = true;
+    var correct = results.filter(function (r) { return r.verdict === 'correct'; }).length;
+    var manual = results.filter(function (r) { return r.verdict === 'manual'; }).length;
+    var total = results.length;
+    var sc = $('#examScore');
+    sc.innerHTML = '<b>' + correct + ' / ' + total + '</b><span>答对' + (manual ? ' · ' + manual + ' 题需人工判定' : '') +
+      (wrongAdded ? '　· ' + wrongAdded + ' 题已进错题本' : '') + '</span>';
+    sc.classList.remove('hidden');
+    $('#btnPaperGrade').classList.add('hidden');
+    $('#btnPaperRetake').classList.remove('hidden');
+    renderPaperExam();
+    toast('批改完成：答对 ' + correct + ' / ' + total + ' 题');
   }
   function exportPaper() {
     if (!S.paper.result || S.paper.result.error) { toast('请先生成双向细目表'); return; }
@@ -1076,6 +1188,18 @@
   $('#paperSearch').oninput = function () { S.paper.query = this.value.trim(); S.paper.picked = []; renderPaperSetup(); };
   $('#btnBuildPaper').onclick = buildPaper;
   $('#btnPaperExport').onclick = exportPaper;
+  bindPaperExamEvents();
+  $('#paperResult').addEventListener('click', function (e) {
+    if (e.target.closest('[data-wexam="start"]')) startPaperExam();
+  });
+  $('#btnPaperGrade').onclick = gradePaperExam;
+  $('#btnPaperRetake').onclick = startPaperExam;
+  $('#btnPaperBack').onclick = function () {
+    $('#paperExam').classList.add('hidden');
+    $('#paperSetup').classList.remove('hidden');
+    $('#paperResult').classList.remove('hidden');
+    window.scrollTo(0, 0);
+  };
   $('#btnPaperPrint').onclick = function () {
     if (!S.paper.result) { toast('请先生成试卷'); return; }
     var w = window.open('', '_blank');
@@ -1193,6 +1317,7 @@
     inThisWeek: inThisWeek,
     allocate: allocate, buildMatrix: buildMatrix, buildBlueprint: buildBlueprint,
     paperHtml: paperHtml, buildPaper: buildPaper,
+    startPaperExam: startPaperExam, gradePaperExam: gradePaperExam, renderPaperExam: renderPaperExam,
     safeFigureMarkup: safeFigureMarkup, nextQuiz: nextQuiz,
     exportMermaidText: function () {
       var ex = exportScopeTopics(), topics = ex.topics, scope = ex.scope, g = ex.graph;

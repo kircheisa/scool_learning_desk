@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>知谱 · 小学诊断辅导平台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== 顶栏 ===== -->
+  <header id="topbar">
+    <a class="brand" href="#" data-nav="home">
+      <span class="brand-mark">知</span>
+      <span class="brand-text"><b>知谱</b><small>小学诊断辅导平台</small></span>
+    </a>
+    <nav id="nav">
+      <button data-nav="home" class="active">首页</button>
+      <button data-nav="explore">知识图谱</button>
+      <button data-nav="diagnose">开始诊断</button>
+      <button data-nav="wrong">错题本 <span id="wrongBadge" class="badge">0</span></button>
+    </nav>
+    <div id="subjectSwitch" class="subject-switch"></div>
+  </header>
+
+  <!-- ===== 首页 ===== -->
+  <section id="view-home" class="view active">
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <div class="eyebrow">基于知识图谱的查漏补缺</div>
+          <h1>不是不会这一题，<br><span>是前面哪里没学会。</span></h1>
+          <p>沿先修关系一路往回找，定位真正卡住你的那个知识点，<br>再按补学路径一步一步补上来。</p>
+          <div class="hero-actions">
+            <button class="btn primary" data-nav="diagnose">开始诊断 <span>→</span></button>
+            <button class="btn ghost" data-nav="explore">逛逛知识图谱</button>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><b id="statTopics">—</b><span>知识点</span></div>
+          <div class="stat"><b id="statDeps">—</b><span>先修关系</span></div>
+          <div class="stat"><b id="statQuestions">—</b><span>诊断题</span></div>
+          <div class="stat"><b id="statSubjects">—</b><span>学科</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="section-head">
+        <div><h2>选一个学科</h2><p>数据来自中小学知识图谱开源项目，覆盖小学 1–6 年级</p></div>
+      </div>
+      <div id="subjectGrid" class="subject-grid"></div>
+
+      <div class="section-head" style="margin-top:38px">
+        <div><h2>怎么用</h2><p>三步找到薄弱点</p></div>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="step-n">1</span><h3>选目标</h3><p>选年级、册次或某个具体知识点，比如「分数除法」。</p></div>
+        <div class="step"><span class="step-n">2</span><h3>做几题</h3><p>连续答对才算掌握；答错会再出一道确认题。</p></div>
+        <div class="step"><span class="step-n">3</span><h3>看路径</h3><p>沿着先修边回溯根因，给出按顺序的补学清单。</p></div>
+      </div>
+
+      <div class="notice">
+        <b>关于数据</b>　知识点、先修关系与题目来自开源项目 <a href="https://github.com/xiaoyang111222/cn-math-taxonomy" target="_blank" rel="noopener">cn-math-taxonomy</a>（CC BY-NC 4.0，仅限个人学习/教学/研究）。图谱与答案由 AI 整理，标为「待核」，正式教学使用前请教师审核。
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 知识图谱 ===== -->
+  <section id="view-explore" class="view">
+    <div class="wrap">
+      <div class="page-head">
+        <div><h2>知识图谱</h2><p>按学科、年级、章节浏览知识点，看清每个点的先修与去向</p></div>
+        <div class="page-tools">
+          <select id="exGrade" class="select"><option value="">全部年级</option></select>
+          <input id="exSearch" class="input" type="search" placeholder="搜索知识点名称…">
+          <button id="btnExportMermaid" class="btn ghost">导出 Mermaid</button>
+          <button id="btnExportMarkmap" class="btn ghost">导出 Markmap</button>
+        </div>
+      </div>
+      <div class="explore-layout">
+        <aside class="panel chapter-panel">
+          <div class="panel-title">章节目录 <span id="exCount" class="muted"></span></div>
+          <div id="chapterList" class="chapter-list"></div>
+        </aside>
+        <main class="panel topic-panel">
+          <div id="topicList" class="topic-list"></div>
+        </main>
+        <aside class="panel detail-panel">
+          <div id="topicDetail" class="topic-detail"><div class="empty">← 点击左侧知识点查看详情</div></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 诊断：选目标 ===== -->
+  <section id="view-diagnose" class="view">
+    <div class="wrap narrow">
+      <div class="page-head">
+        <div><h2>开始诊断</h2><p>选一个范围，系统会自动追溯它依赖的前置知识点</p></div>
+      </div>
+
+      <div id="setupPanel" class="card setup">
+        <div class="form-row">
+          <label>学科</label>
+          <div id="diagSubjects" class="chip-row"></div>
+        </div>
+        <div class="form-row">
+          <label>诊断范围</label>
+          <div class="seg" id="scopeMode">
+            <button data-mode="grade" class="active">按年级 / 册次</button>
+            <button data-mode="topic">指定知识点</button>
+          </div>
+        </div>
+
+        <div id="scopeGrade">
+          <div class="form-row">
+            <label>年级 / 册次</label>
+            <div id="gradeChips" class="chip-row"></div>
+          </div>
+          <div class="form-row">
+            <label>学习进度</label>
+            <div class="seg small" id="progressMode">
+              <button data-progress="上" class="active">本学期上半</button>
+              <button data-progress="下">下半</button>
+              <button data-progress="全">已学完整学年</button>
+            </div>
+            <div class="hint">选「上半」时，本年级下册的知识点视为「还没学」，不会误判为薄弱。</div>
+          </div>
+        </div>
+
+        <div id="scopeTopic" class="hidden">
+          <div class="form-row">
+            <label>按年级浏览</label>
+            <div id="targetGradeChips" class="chip-row"></div>
+            <div class="hint">选一个年级即可列出该年级知识点；不选则只按关键词搜索。</div>
+          </div>
+          <div class="form-row">
+            <label>关键词筛选（可与年级叠加）</label>
+            <input id="targetSearch" class="input" type="search" placeholder="输入关键词，如：分数、方程、古诗…">
+            <div id="targetResults" class="target-results"></div>
+            <div class="hint">点击知识点可多选，已选：<span id="selectedTargets">无</span></div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>选项</label>
+          <div class="opts-row">
+            <div class="opt"><span>题量上限</span>
+              <select id="optLimit" class="select">
+                <option value="8">8 题（快速）</option>
+                <option value="16" selected>16 题（推荐）</option>
+                <option value="30">30 题（细致）</option>
+              </select>
+            </div>
+            <div class="opt"><span>掌握需连续答对</span>
+              <select id="optConfirm" class="select">
+                <option value="2">2 题</option>
+                <option value="3" selected>3 题</option>
+                <option value="5">5 题</option>
+              </select>
+            </div>
+            <div class="opt"><span>模式</span>
+              <select id="optMode" class="select">
+                <option value="target" selected>深度诊断（含前置回溯）</option>
+                <option value="screen">年级筛查（只测本范围）</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          <button id="btnStartDiag" class="btn primary">开始答题 <span>→</span></button>
+          <span id="setupError" class="err"></span>
+        </div>
+      </div>
+
+      <!-- 答题中 -->
+      <div id="quizPanel" class="card quiz hidden">
+        <div class="quiz-top">
+          <div class="quiz-progress"><div id="quizBar" class="quiz-bar"></div></div>
+          <div class="quiz-meta"><span id="quizCount">第 0 / 0 题</span><span id="quizTopic">—</span></div>
+        </div>
+        <div class="quiz-body">
+          <div id="quizQuestion" class="quiz-question">—</div>
+          <div id="quizChoices" class="quiz-choices"></div>
+          <div id="quizInputWrap" class="quiz-input-wrap hidden">
+            <input id="quizInput" class="input" type="text" placeholder="输入答案后按回车">
+          </div>
+          <div id="quizSelfWrap" class="quiz-self-wrap hidden">
+            <button class="btn ghost" data-self="wrong">还没掌握</button>
+            <button class="btn ghost" data-self="correct">会了</button>
+          </div>
+          <div id="quizFeedback" class="quiz-feedback hidden"></div>
+        </div>
+        <div class="quiz-actions">
+          <button id="btnSubmit" class="btn primary">提交答案</button>
+          <button id="btnQuit" class="btn ghost">退出诊断</button>
+          <button id="btnNext" class="btn primary hidden">下一题 →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 诊断报告 ===== -->
+  <section id="view-report" class="view">
+    <div class="wrap">
+      <div class="page-head">
+        <div><h2>诊断报告</h2><p id="reportSub">—</p></div>
+        <div class="page-tools">
+          <button id="btnAgain" class="btn ghost">再测一次</button>
+          <button id="btnExport" class="btn ghost">导出报告</button>
+        </div>
+      </div>
+      <div id="reportBody"></div>
+    </div>
+  </section>
+
+  <!-- ===== 错题本 ===== -->
+  <section id="view-wrong" class="view">
+    <div class="wrap">
+      <div class="page-head">
+        <div><h2>错题本</h2><p>本机保存。自己归类、遮住答案重做、做对归档——记录只用于决定先练什么，不用于评价</p></div>
+        <div class="page-tools">
+          <button id="btnToggleArchived" class="btn ghost">显示已归档</button>
+          <button id="btnClearWrong" class="btn ghost">清空</button>
+        </div>
+      </div>
+      <div id="wrongFilters" class="wrong-filters hidden">
+        <div class="wf-row"><span class="wf-label">科目</span><div id="wrongSubjectChips" class="wf-chips"></div></div>
+        <div class="wf-row"><span class="wf-label">年级</span><div id="wrongGradeChips" class="wf-chips"></div></div>
+        <div class="wf-row"><span class="wf-label">错因</span><div id="wrongCauseChips" class="wf-chips"></div></div>
+      </div>
+      <div id="wrongSummary" class="wrong-summary hidden"></div>
+      <div id="wrongBody"></div>
+    </div>
+  </section>
+
+  <footer id="footer">
+    <span>知谱 · 基于开源知识图谱的查漏补缺工具</span>
+    <span>数据：CC BY-NC 4.0 · 教学使用前请教师审核</span>
+  </footer>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="data/index.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
